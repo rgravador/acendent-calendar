@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #f6f2ea;
+  --ink: #1a1a1a;
+  --mute: #7a7468;
+  --rule: #ddd4c3;
+  --accent: #b4341e;
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.font-display {
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
+  font-optical-sizing: auto;
+  font-variation-settings: 'SOFT' 30, 'WONK' 0;
+}
+
+.kicker {
+  font-family: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+.hairline {
+  border-top: 1px solid var(--rule);
+}
+
+.accent-underline {
+  background-image: linear-gradient(var(--accent), var(--accent));
+  background-size: 100% 2px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+}
+
+/* Subtle text selection that fits the editorial palette */
+::selection {
+  background: var(--ink);
+  color: var(--paper);
+}
