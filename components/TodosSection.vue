@@ -7,38 +7,42 @@ const showDone = ref(false)
 
 const active = computed(() => todos.value.filter((t) => !t.done))
 const done = computed(() => todos.value.filter((t) => t.done))
+const highCount = computed(() => active.value.filter((t) => t.priority === 'high').length)
 
 async function onAdd(input: { text: string; priority: 'high' | 'med' | 'low'; dueDate?: string }) {
-  try {
-    await add(input)
-  } catch {
-    // swallow; the server rejected a bad payload — error UX is minimal here
-  }
+  try { await add(input) } catch { /* noop */ }
 }
-
-async function onToggle(id: string, done: boolean) {
-  try { await update(id, { done }) } catch { /* rolled back inside composable */ }
+async function onToggle(id: string, isDone: boolean) {
+  try { await update(id, { done: isDone }) } catch { /* rolled back */ }
 }
-
 async function onRemove(id: string) {
-  try { await remove(id) } catch { /* rolled back inside composable */ }
+  try { await remove(id) } catch { /* rolled back */ }
 }
 </script>
 
 <template>
   <div>
-    <div class="kicker mb-2">Section II</div>
-    <h2 class="font-display text-3xl mb-5">Tasks &amp; Obligations</h2>
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <span class="kicker text-accent">02</span>
+        <h2 class="text-sm text-ink font-medium tracking-wide">Todo</h2>
+      </div>
+      <div class="flex gap-1.5">
+        <span v-if="highCount > 0" class="tag tag-bear num">HI × {{ highCount }}</span>
+        <span class="tag num">{{ String(active.length).padStart(2, '0') }}</span>
+      </div>
+    </div>
 
     <TodoAddForm @add="onAdd" />
 
-    <div v-if="loading" class="text-mute italic">Loading…</div>
+    <div v-if="loading" class="text-mute text-xs font-mono py-4">Loading…</div>
 
-    <ul v-else-if="active.length === 0 && done.length === 0" class="text-mute italic py-8">
-      Nothing to do. Go outside.
-    </ul>
+    <div v-else-if="active.length === 0 && done.length === 0" class="rounded-md bg-surface-soft border border-rule p-6 text-center">
+      <p class="text-sm text-ink">Nothing to do</p>
+      <p class="text-xs text-mute mt-1">Your list is empty.</p>
+    </div>
 
-    <ul v-else class="border-t border-rule">
+    <ul v-else class="divide-y divide-rule mt-3">
       <TodoItem
         v-for="t in active"
         :key="t._id"
@@ -48,11 +52,15 @@ async function onRemove(id: string) {
       />
     </ul>
 
-    <div v-if="done.length > 0" class="mt-6">
-      <button class="kicker text-mute hover:text-accent" @click="showDone = !showDone">
-        {{ showDone ? 'Hide' : 'Show' }} Done &middot; {{ done.length }}
+    <div v-if="done.length > 0" class="mt-5 pt-3 border-t border-rule">
+      <button
+        class="kicker hover:text-ink transition flex items-center gap-1.5"
+        @click="showDone = !showDone"
+      >
+        <span>{{ showDone ? '▾' : '▸' }}</span>
+        <span>DONE · {{ done.length }}</span>
       </button>
-      <ul v-if="showDone" class="mt-3 border-t border-rule opacity-70">
+      <ul v-if="showDone" class="mt-2 divide-y divide-rule">
         <TodoItem
           v-for="t in done"
           :key="t._id"

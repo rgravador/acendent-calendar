@@ -4,6 +4,7 @@ export const SESSION_COOKIE = 'dashboard_session'
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30 // 30 days
 
 interface SessionPayload {
+  sub: string // userId (Google sub)
   iat: number
   exp: number
 }
@@ -23,8 +24,9 @@ function sign(payload: string, secret: string): string {
   return b64url(createHmac('sha256', secret).update(payload).digest())
 }
 
-export function issueSessionToken(secret: string, now: number = Date.now()): string {
+export function issueSessionToken(userId: string, secret: string, now: number = Date.now()): string {
   const payload: SessionPayload = {
+    sub: userId,
     iat: Math.floor(now / 1000),
     exp: Math.floor(now / 1000) + SESSION_TTL_SECONDS,
   }
@@ -33,23 +35,27 @@ export function issueSessionToken(secret: string, now: number = Date.now()): str
   return `${encoded}.${sig}`
 }
 
-export function verifySessionToken(token: string | undefined, secret: string, now: number = Date.now()): boolean {
-  if (!token) return false
+/**
+ * Verify the session token and return the userId if valid, or null otherwise.
+ */
+export function verifySessionToken(token: string | undefined, secret: string, now: number = Date.now()): string | null {
+  if (!token) return null
   const parts = token.split('.')
-  if (parts.length !== 2) return false
+  if (parts.length !== 2) return null
   const [encoded, sig] = parts
-  if (!encoded || !sig) return false
+  if (!encoded || !sig) return null
   const expectedSig = sign(encoded, secret)
   const a = Buffer.from(sig)
   const b = Buffer.from(expectedSig)
-  if (a.length !== b.length) return false
-  if (!timingSafeEqual(a, b)) return false
+  if (a.length !== b.length) return null
+  if (!timingSafeEqual(a, b)) return null
   try {
     const payload = JSON.parse(b64urlDecode(encoded).toString('utf8')) as SessionPayload
-    if (typeof payload.exp !== 'number') return false
-    return Math.floor(now / 1000) < payload.exp
+    if (typeof payload.exp !== 'number' || typeof payload.sub !== 'string') return null
+    if (Math.floor(now / 1000) >= payload.exp) return null
+    return payload.sub
   } catch {
-    return false
+    return null
   }
 }
 

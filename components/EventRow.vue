@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { CalendarEventDTO } from '~/server/services/calendar'
-import { formatClock, formatRelative, formatDuration, isCurrent, diffMinutes } from '~/utils/time'
+import { formatClock, formatDuration, isCurrent, diffMinutes } from '~/utils/time'
 
 const props = defineProps<{
   event: CalendarEventDTO
@@ -12,40 +12,81 @@ const clock = computed(() => formatClock(props.event.start))
 const duration = computed(() => formatDuration(props.event.start, props.event.end))
 const current = computed(() => isCurrent(props.event.start, props.event.end, props.now))
 const minsToStart = computed(() => diffMinutes(props.event.start, props.now))
-const past = computed(() => !current.value && minsToStart.value < 0 && new Date(props.event.end).getTime() < props.now.getTime())
+const past = computed(() => !current.value && new Date(props.event.end).getTime() < props.now.getTime())
+
+const state = computed(() => {
+  if (current.value) return 'live'
+  if (past.value) return 'closed'
+  if (minsToStart.value <= 15) return 'imminent'
+  return 'queued'
+})
+
 const relative = computed(() => {
-  if (current.value) return 'now'
-  if (past.value) return 'concluded'
-  return formatRelative(props.event.start, props.now)
+  if (current.value) return 'NOW'
+  if (past.value) return 'DONE'
+  const m = minsToStart.value
+  if (m < 60) return `+${m}m`
+  return `+${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}m`
+})
+
+const relativeClass = computed(() => {
+  if (current.value) return 'tag-bull'
+  if (past.value) return ''
+  if (state.value === 'imminent') return 'tag-warn'
+  return 'tag-info'
+})
+
+const arrowClass = computed(() => {
+  if (past.value) return 'arrow-flat'
+  if (current.value) return 'arrow-up'
+  return 'arrow-up'
 })
 </script>
 
 <template>
   <li
-    class="grid grid-cols-[7rem_1fr_auto] gap-6 py-5 items-baseline transition"
-    :class="{
-      'opacity-40': past,
-    }"
+    class="py-3 flex gap-3 items-start group transition"
+    :class="{ 'opacity-40': past }"
   >
-    <span class="font-display text-2xl tabular-nums" :class="{ 'accent-underline text-ink': current }">
-      {{ clock }}
-    </span>
-    <div>
-      <a
-        v-if="event.htmlLink"
-        :href="event.htmlLink"
-        target="_blank"
-        rel="noopener"
-        class="font-display text-2xl leading-snug hover:text-accent transition"
-      >{{ event.title }}</a>
-      <span v-else class="font-display text-2xl leading-snug">{{ event.title }}</span>
-      <div class="text-sm text-mute mt-1">
-        {{ duration }}<template v-if="event.location"> &middot; {{ event.location }}</template>
+    <!-- time rail -->
+    <div class="flex flex-col items-end min-w-[3.5rem] pt-0.5">
+      <span
+        class="num text-sm leading-none"
+        :class="current ? 'text-bull' : 'text-ink'"
+      >{{ clock }}</span>
+      <span class="text-[0.65rem] text-mute mt-1 num">{{ duration }}</span>
+    </div>
+
+    <!-- border tick -->
+    <div
+      class="w-[3px] self-stretch rounded-full"
+      :class="{
+        'bg-bull': current,
+        'bg-warn': state === 'imminent',
+        'bg-info': state === 'queued',
+        'bg-rule': past,
+      }"
+    />
+
+    <!-- content -->
+    <div class="flex-1 min-w-0">
+      <div class="flex items-start justify-between gap-2">
+        <a
+          v-if="event.htmlLink"
+          :href="event.htmlLink"
+          target="_blank"
+          rel="noopener"
+          class="text-sm font-medium leading-snug hover:text-accent transition line-clamp-2"
+        >{{ event.title }}</a>
+        <span v-else class="text-sm font-medium leading-snug line-clamp-2">{{ event.title }}</span>
+        <span class="tag shrink-0 num" :class="relativeClass">
+          <span :class="arrowClass" />
+          {{ relative }}
+        </span>
+      </div>
+      <div v-if="event.location" class="text-[0.68rem] text-mute mt-1 truncate font-mono uppercase tracking-wider">
+        @ {{ event.location }}
       </div>
     </div>
-    <span
-      class="kicker tabular-nums text-right"
-      :class="{ 'text-accent': current, 'text-mute': !current }"
-    >{{ relative }}</span>
   </li>
 </template>

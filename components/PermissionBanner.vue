@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { PermissionState } from '~/composables/useAlarms'
 
 const props = defineProps<{
@@ -12,38 +13,36 @@ const emit = defineEmits<{
 }>()
 
 const visible = computed(() => props.permission !== 'granted' || !props.soundUnlocked)
+
+const message = computed(() => {
+  if (props.permission === 'unsupported') return 'This browser doesn\'t support desktop notifications.'
+  if (props.permission === 'denied') return 'Notifications are blocked. Sound will still play when enabled.'
+  if (props.permission !== 'granted') return 'Enable notifications so alarms can reach you.'
+  if (!props.soundUnlocked) return 'Enable sound to hear the alarm chime.'
+  return ''
+})
 </script>
 
 <template>
   <div
     v-if="visible"
-    class="border border-rule bg-paper px-5 py-3 my-4 flex flex-wrap items-center justify-between gap-4"
+    class="mt-5 rounded-xl bg-accent-soft border border-accent/20 px-4 py-3 flex flex-wrap items-center justify-between gap-3"
   >
-    <div class="text-sm italic text-mute">
-      <span v-if="permission === 'unsupported'">
-        This browser does not support desktop notifications.
-      </span>
-      <span v-else-if="permission === 'denied'">
-        Desktop notifications are blocked in browser settings. The chime will still play if sound is enabled.
-      </span>
-      <span v-else-if="permission !== 'granted'">
-        Enable notifications so alarms can reach you before each event.
-      </span>
-      <span v-else-if="!soundUnlocked">
-        Enable sound to hear the alarm chime.
-      </span>
+    <div class="text-sm text-ink-soft flex items-center gap-2">
+      <span class="dot text-accent" />
+      <span>{{ message }}</span>
     </div>
-    <div class="flex gap-3">
+    <div class="flex gap-2">
       <button
         v-if="permission === 'default'"
-        class="kicker border border-ink px-3 py-2 hover:bg-ink hover:text-paper transition"
+        class="btn btn-accent text-xs"
         @click="emit('request-permission')"
       >
         Enable notifications
       </button>
       <button
         v-if="!soundUnlocked"
-        class="kicker border border-ink px-3 py-2 hover:bg-ink hover:text-paper transition"
+        class="btn btn-ghost text-xs"
         @click="emit('unlock-sound')"
       >
         Enable sound

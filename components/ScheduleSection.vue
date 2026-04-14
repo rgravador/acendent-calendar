@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, type Ref } from 'vue'
+import { computed } from 'vue'
 import type { CalendarEventDTO } from '~/server/services/calendar'
 import type { ScheduleError } from '~/composables/useSchedule'
 
@@ -15,41 +15,39 @@ const hasEvents = computed(() => props.events.length > 0)
 
 <template>
   <div>
-    <div class="flex items-end justify-between mb-4 gap-8">
-      <div>
-        <div class="kicker">Section I</div>
-        <h2 class="font-display text-4xl leading-none">Today&rsquo;s Schedule</h2>
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <span class="kicker text-accent">01</span>
+        <h2 class="text-sm text-ink font-medium tracking-wide">Schedule</h2>
       </div>
-      <div class="text-sm text-mute italic self-end">
-        Primary calendar &middot; refreshes silently
-      </div>
+      <span v-if="events.length > 0" class="tag tag-info num">
+        {{ String(events.length).padStart(2, '0') }}
+      </span>
     </div>
 
-    <div v-if="error?.kind === 'not_connected'" class="border-y border-rule py-8">
-      <p class="font-display text-2xl italic">No calendar connected.</p>
-      <p class="text-mute mt-2">Visit <code>/setup</code> to connect your Google Calendar.</p>
+    <div v-if="error?.kind === 'not_connected'" class="rounded-md bg-surface-soft border border-rule p-4 text-center">
+      <p class="text-sm text-ink">Calendar not connected</p>
+      <p class="text-xs text-mute mt-1">Sign out and sign in again to reconnect.</p>
     </div>
 
-    <div v-else-if="error?.kind === 'auth_failed'" class="border-y border-rule py-8">
-      <p class="font-display text-2xl italic">Calendar authorisation expired.</p>
-      <p class="text-mute mt-2">Re-run <code>/setup</code> to refresh the token.</p>
+    <div v-else-if="error?.kind === 'auth_failed'" class="rounded-md bg-bear-soft border border-bear/30 p-4 text-center">
+      <p class="text-sm text-bear">Authorization expired</p>
+      <p class="text-xs text-mute mt-1">Sign out and sign in again to refresh.</p>
     </div>
 
-    <div v-else-if="error?.kind === 'unknown'" class="border-y border-rule py-8">
-      <p class="font-display text-2xl italic">Calendar temporarily unavailable.</p>
-      <p class="text-mute mt-2">{{ error.message }} &mdash; will retry automatically.</p>
+    <div v-else-if="error?.kind === 'unknown'" class="rounded-md bg-warn-soft border border-warn/30 p-4">
+      <p class="text-sm text-warn">Calendar temporarily unavailable</p>
+      <p class="text-xs text-mute mt-1">{{ error.message }} — retrying.</p>
     </div>
 
-    <div v-else-if="loading" class="border-y border-rule py-8 text-mute italic">
-      Reading today&rsquo;s pages&hellip;
+    <div v-else-if="loading" class="text-mute text-xs font-mono py-4">Loading…</div>
+
+    <div v-else-if="!hasEvents" class="rounded-md bg-surface-soft border border-rule p-6 text-center">
+      <p class="text-sm text-ink">No events today</p>
+      <p class="text-xs text-mute mt-1">Your schedule is clear.</p>
     </div>
 
-    <div v-else-if="!hasEvents" class="border-y border-rule py-12 text-center">
-      <p class="font-display text-3xl italic">Nothing on the agenda.</p>
-      <p class="text-mute mt-2">A rare and welcome thing.</p>
-    </div>
-
-    <ol v-else class="divide-y divide-rule border-y border-rule">
+    <ol v-else class="divide-y divide-rule">
       <EventRow
         v-for="e in events"
         :key="e.id"

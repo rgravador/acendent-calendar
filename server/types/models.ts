@@ -2,6 +2,17 @@ export type Priority = 'high' | 'med' | 'low'
 
 export const PRIORITIES: readonly Priority[] = ['high', 'med', 'low'] as const
 
+export interface User {
+  _id: string // Google sub (unique ID)
+  email: string
+  name: string
+  picture?: string
+  googleRefreshToken: string
+  googleTokenUpdatedAt: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Settings {
   _id: 'singleton'
   alarmOffsetMinutes: number

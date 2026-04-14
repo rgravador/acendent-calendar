@@ -1,6 +1,5 @@
 import { google } from 'googleapis'
 import { buildAuthenticatedClient } from '~/server/utils/google-oauth'
-import { getSettings } from '~/server/repositories/settings'
 import { isMockMode } from '~/server/utils/mock-mode'
 import { mockTodaysEvents } from '~/server/mock/store'
 
@@ -15,14 +14,14 @@ export interface CalendarEventDTO {
 
 export class CalendarNotConfiguredError extends Error {
   constructor() {
-    super('Google Calendar is not connected. Visit /setup to connect.')
+    super('Google Calendar is not connected. Please sign in again.')
     this.name = 'CalendarNotConfiguredError'
   }
 }
 
 export class CalendarAuthError extends Error {
   constructor(cause?: unknown) {
-    super('Google Calendar auth failed. Re-run /setup to refresh the token.')
+    super('Google Calendar auth failed. Please sign out and sign in again.')
     this.name = 'CalendarAuthError'
     this.cause = cause
   }
@@ -40,13 +39,10 @@ function endOfLocalDay(now: Date = new Date()): Date {
   return d
 }
 
-export async function fetchTodaysEvents(): Promise<CalendarEventDTO[]> {
+export async function fetchTodaysEvents(refreshToken: string): Promise<CalendarEventDTO[]> {
   if (isMockMode()) return mockTodaysEvents()
 
-  const settings = await getSettings()
-  if (!settings.googleRefreshToken) throw new CalendarNotConfiguredError()
-
-  const auth = buildAuthenticatedClient(settings.googleRefreshToken)
+  const auth = buildAuthenticatedClient(refreshToken)
   const calendar = google.calendar({ version: 'v3', auth })
 
   const now = new Date()
@@ -62,7 +58,7 @@ export async function fetchTodaysEvents(): Promise<CalendarEventDTO[]> {
 
     const items = res.data.items ?? []
     return items
-      .filter((e) => e.start?.dateTime && e.end?.dateTime) // drop all-day events
+      .filter((e) => e.start?.dateTime && e.end?.dateTime)
       .map((e): CalendarEventDTO => ({
         id: e.id ?? '',
         title: e.summary ?? '(no title)',

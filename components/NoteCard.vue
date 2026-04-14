@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import type { Note } from '~/server/types/models'
 
 const props = defineProps<{
@@ -29,10 +29,7 @@ function scheduleSave() {
 }
 
 function flush() {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer)
-    debounceTimer = null
-  }
+  if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null }
   const patch: { title?: string | null; body?: string } = {}
   const trimmedBody = draftBody.value.trim()
   if (trimmedBody && trimmedBody !== props.note.body) patch.body = trimmedBody
@@ -54,29 +51,33 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-function onBlur() {
-  flush()
-  editing.value = false
-}
+function onBlur() { flush(); editing.value = false }
 
-const updatedAgo = computed(() => {
+const timestamp = computed(() => {
   const d = new Date(props.note.updatedAt)
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const diffMin = Math.round((Date.now() - d.getTime()) / 60000)
+  if (diffMin < 1) return 'NOW'
+  if (diffMin < 60) return `T-${diffMin}M`
+  const diffHr = Math.round(diffMin / 60)
+  if (diffHr < 24) return `T-${diffHr}H`
+  return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }).toUpperCase()
 })
 </script>
 
 <template>
-  <article class="group border border-rule bg-paper p-5 break-inside-avoid mb-5">
+  <article class="group rounded-md bg-surface-soft border border-rule p-3 card-hover transition">
     <div v-if="!editing" class="cursor-text" @click="editing = true">
-      <h3 v-if="note.title" class="font-display text-xl mb-2">{{ note.title }}</h3>
-      <p class="whitespace-pre-wrap leading-snug">{{ note.body }}</p>
-      <div class="flex items-center justify-between mt-3">
-        <span class="kicker text-mute">{{ updatedAgo }}</span>
+      <div class="flex items-start justify-between gap-2 mb-1.5">
+        <h3 v-if="note.title" class="text-sm font-medium text-ink leading-tight">{{ note.title }}</h3>
+        <span class="tag num shrink-0">{{ timestamp }}</span>
+      </div>
+      <p class="whitespace-pre-wrap text-xs leading-relaxed text-ink-soft font-mono">{{ note.body }}</p>
+      <div class="flex justify-end mt-2">
         <button
-          class="opacity-0 group-hover:opacity-100 text-xs text-mute hover:text-accent transition"
+          class="opacity-0 group-hover:opacity-100 text-[0.65rem] text-mute hover:text-bear transition font-mono uppercase tracking-wider"
           @click.stop="emit('remove', note._id)"
         >
-          Delete
+          × Delete
         </button>
       </div>
     </div>
@@ -86,7 +87,7 @@ const updatedAgo = computed(() => {
         v-model="draftTitle"
         placeholder="Title (optional)"
         maxlength="120"
-        class="w-full bg-transparent border-b border-rule py-1 font-display text-xl focus:outline-none focus:border-accent"
+        class="field text-sm mb-2"
         @input="scheduleSave"
       >
       <textarea
@@ -94,13 +95,13 @@ const updatedAgo = computed(() => {
         rows="4"
         maxlength="2000"
         autofocus
-        class="mt-3 w-full bg-transparent resize-none focus:outline-none leading-snug"
+        class="field text-sm resize-none leading-relaxed font-mono"
         @input="scheduleSave"
         @blur="onBlur"
       />
       <div class="flex items-center justify-between mt-2">
-        <span class="text-xs text-mute italic">Cmd/Ctrl+Enter to save · Esc to cancel</span>
-        <span class="text-xs text-mute tabular-nums">{{ draftBody.length }}/2000</span>
+        <span class="text-[0.65rem] text-mute font-mono uppercase tracking-wider">⌘/Ctrl+Enter save · Esc cancel</span>
+        <span class="text-[0.65rem] text-mute num">{{ draftBody.length }}/2000</span>
       </div>
     </div>
   </article>

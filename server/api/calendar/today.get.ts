@@ -1,9 +1,21 @@
 import { createError, setHeader } from 'h3'
 import { fetchTodaysEvents, CalendarNotConfiguredError, CalendarAuthError } from '~/server/services/calendar'
+import { getUserById } from '~/server/repositories/users'
+import { isMockMode } from '~/server/utils/mock-mode'
 
 export default defineEventHandler(async (event) => {
   try {
-    const events = await fetchTodaysEvents()
+    if (isMockMode()) {
+      const events = await fetchTodaysEvents('')
+      setHeader(event, 'Cache-Control', 'no-store')
+      return { events }
+    }
+
+    const userId = event.context.userId as string
+    const user = await getUserById(userId)
+    if (!user?.googleRefreshToken) throw new CalendarNotConfiguredError()
+
+    const events = await fetchTodaysEvents(user.googleRefreshToken)
     setHeader(event, 'Cache-Control', 'no-store')
     return { events }
   } catch (err: unknown) {

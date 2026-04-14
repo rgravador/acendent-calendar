@@ -2,16 +2,14 @@ import { getCookie, sendRedirect, createError } from 'h3'
 import { SESSION_COOKIE, verifySessionToken } from '~/server/utils/cookies'
 import { isMockMode } from '~/server/utils/mock-mode'
 
-/**
- * Routes that bypass the session check. `/setup*` is gated by SETUP_SECRET.
- */
+const MOCK_USER_ID = 'mock-user'
+
 const PUBLIC_ROUTES: readonly (string | RegExp)[] = [
-  '/login',
-  '/api/session/login',
+  '/',
+  '/api/auth/google',
+  '/api/auth/callback',
   '/api/session/status',
   '/api/health',
-  /^\/setup(\/.*)?$/,
-  /^\/api\/setup(\/.*)?$/,
   // Nuxt/Vite internals
   /^\/_nuxt(\/.*)?$/,
   /^\/__nuxt(\/.*)?$/,
@@ -27,9 +25,14 @@ function isPublic(path: string): boolean {
 }
 
 export default defineEventHandler(async (event) => {
-  const path = event.path || event.node.req.url || '/'
+  const rawPath = event.path || event.node.req.url || '/'
+  const path = rawPath.split('?')[0]
   if (isPublic(path)) return
-  if (isMockMode()) return // mock mode bypasses auth entirely
+
+  if (isMockMode()) {
+    event.context.userId = MOCK_USER_ID
+    return
+  }
 
   const config = useRuntimeConfig()
   const secret = config.sessionSecret
@@ -38,11 +41,14 @@ export default defineEventHandler(async (event) => {
   }
 
   const token = getCookie(event, SESSION_COOKIE)
-  if (verifySessionToken(token, secret)) return
+  const userId = verifySessionToken(token, secret)
+  if (userId) {
+    event.context.userId = userId
+    return
+  }
 
-  // API paths get 401, page paths get a redirect to /login
   if (path.startsWith('/api/')) {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
-  await sendRedirect(event, '/login', 302)
+  await sendRedirect(event, '/', 302)
 })

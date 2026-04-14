@@ -33,8 +33,6 @@ export default defineNuxtConfig({
     googleClientId: '',
     googleClientSecret: '',
     googleRedirectUri: '',
-    setupSecret: '',
-    dashboardPassword: '',
     sessionSecret: '',
     public: {
       appName: 'Dashboard',
@@ -46,6 +44,10 @@ export default defineNuxtConfig({
     // For Amplify Hosting SSR: Nitro's `aws-amplify` preset.
     // For local dev, the default `node-server` is used.
     preset: process.env.NITRO_PRESET || undefined,
+  },
+
+  devServer: {
+    port: 4001,
   },
 
   typescript: {
