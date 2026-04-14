@@ -1,5 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+
+const IGNORED_IDS_KEY = 'alarm:ignoredIds'
+
+function loadIgnoredIds(): Set<string> {
+  if (typeof localStorage === 'undefined') return new Set()
+  try {
+    const raw = localStorage.getItem(IGNORED_IDS_KEY)
+    if (raw) return new Set(JSON.parse(raw) as string[])
+  } catch { /* ignore */ }
+  return new Set()
+}
 
 const now = useNow()
 const schedule = useSchedule()
@@ -10,7 +21,12 @@ const soundRef = computed(() => settings.value.alarmSound)
 const volumeRef = computed(() => settings.value.alarmVolume)
 const ringDurationRef = computed(() => settings.value.alarmRingDuration)
 
-const ignoredIds = ref(new Set<string>())
+const ignoredIds = ref(loadIgnoredIds())
+
+watch(ignoredIds, (ids) => {
+  if (typeof localStorage === 'undefined') return
+  localStorage.setItem(IGNORED_IDS_KEY, JSON.stringify([...ids]))
+}, { deep: true })
 
 function toggleIgnore(eventId: string) {
   const next = new Set(ignoredIds.value)

@@ -124,9 +124,11 @@ function playSynthSound(ctx: AudioContext, sound: AlarmSound, volume: number) {
 }
 
 const RING_INTERVAL_MS = 3_000 // replay sound every 3 seconds
+const SOUND_UNLOCKED_KEY = 'alarm:soundUnlocked'
 
 export function useAlarms({ events, offsetMinutes, ignoredIds, alarmSound, alarmVolume, alarmRingDuration }: Options): AlarmsApi {
   const permission = ref<PermissionState>('default')
+  const wasPreviouslyUnlocked = typeof localStorage !== 'undefined' && localStorage.getItem(SOUND_UNLOCKED_KEY) === '1'
   const soundUnlocked = ref(false)
   const ringing = ref<RingingAlarm | null>(null)
   const timers = new Set<ReturnType<typeof setTimeout>>()
@@ -276,6 +278,9 @@ export function useAlarms({ events, offsetMinutes, ignoredIds, alarmSound, alarm
     }
 
     soundUnlocked.value = Boolean(audioCtx)
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(SOUND_UNLOCKED_KEY, soundUnlocked.value ? '1' : '0')
+    }
   }
 
   function testFire() {
@@ -288,6 +293,11 @@ export function useAlarms({ events, offsetMinutes, ignoredIds, alarmSound, alarm
     if (!ctx) return
     if (ctx.state === 'suspended') void ctx.resume()
     playSynthSound(ctx, sound, alarmVolume.value)
+  }
+
+  // Auto-unlock sound if it was previously enabled
+  if (wasPreviouslyUnlocked) {
+    void unlockSound()
   }
 
   // Initial permission probe
